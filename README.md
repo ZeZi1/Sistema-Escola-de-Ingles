@@ -20,9 +20,3 @@ Um sistema completo de gestão escolar desenvolvido em **Python (Flask)** e **SQ
 ## 🔒 Privacidade e Segurança
 
 Para proteger dados reais de alunos e professores, **o banco de dados de produção e as chaves secretas não estão incluídos neste repositório.** As senhas no código-fonte foram substituídas por variáveis de ambiente ou *placeholders*. O sistema conta com um script de inicialização que gera a estrutura de tabelas e o utilizador Administrador padrão automaticamente ao ser executado pela primeira vez.
-
-## 💻 Como executar o projeto localmente
-
-1. Clone este repositório:
-   ```bash
-   git clone [https://github.com/seu-usuario/seu-repositorio.git](https://github.com/seu-usuario/seu-repositorio.git)
