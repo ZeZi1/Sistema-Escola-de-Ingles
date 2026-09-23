@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Professor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header style="background: #2563eb;">
+            <div>
+                <h1>Portal do Professor</h1>
+                <span class="user-info">{{ current_user.full_name }}</span>
+            </div>
+            <a href="/logout" class="logout" style="border-color: white; color: white;">Sair</a>
+        </header>
+
+        <main>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: #1e293b; margin: 0;">Minhas Turmas</h2>
+                <a href="/export_csv" class="btn btn-success">📥 Exportar Relatório Geral (CSV)</a>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+                {% for c in classes %}
+                <div class="card" style="text-align: center; border-top: 4px solid #2563eb;">
+                    <h3 style="margin-top: 0;">{{ c.name }}</h3>
+                    <p style="color: #64748b; margin-bottom: 1.5rem;">🕒 {{ c.schedule }}</p>
+                    <a href="/teacher/class/{{ c.id }}" class="btn btn-primary" style="width: 100%; box-sizing: border-box;">Gerenciar Diário de Classe</a>
+                </div>
+                {% else %}
+                <div class="card" style="grid-column: 1 / -1; text-align: center; color: #64748b;">
+                    Você ainda não foi alocado(a) em nenhuma turma.
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

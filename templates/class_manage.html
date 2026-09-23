@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Diário de Classe - {{ cls.name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header style="background: #2563eb;">
+            <div>
+                <h1>Diário: {{ cls.name }}</h1>
+                <span class="user-info">{{ cls.schedule }}</span>
+            </div>
+            <a href="/teacher" class="btn btn-primary" style="background: transparent; border: 1px solid white;">Voltar</a>
+        </header>
+
+        <main>
+            <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <div class="section-title">Registrar Nova Aula</div>
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <input type="date" id="class-date" class="form-group input" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <input type="text" id="class-topic" placeholder="Tema da aula (Ex: Verbo To Be)" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                
+                <table class="table-list" id="students-table">
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Presença</th>
+                            <th>Nota (0-10)</th>
+                            <th>Homework</th>
+                            <th>Observação Opcional</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="saveRecords()">💾 Salvar Chamada e Notas</button>
+            </div>
+
+            <div class="card" style="margin-top: 2rem;">
+                <div class="section-title">Histórico de Aulas</div>
+                <div id="history-container">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Correção para o Linter do VSCode não reclamar da sintaxe Jinja no JS
+        const classId = parseInt("{{ cls.id }}", 10);
+        
+        // Define a data de hoje como padrão
+        document.getElementById('class-date').valueAsDate = new Date();
+
+        // Carrega alunos para fazer a chamada
+        fetch(`/api/class/${classId}/students`)
+            .then(res => res.json())
+            .then(students => {
+                const tbody = document.querySelector('#students-table tbody');
+                tbody.innerHTML = students.map(s => `
+                    <tr data-student-id="${s.id}">
+                        <td style="font-weight: bold;">${s.name}</td>
+                        <td>
+                            <select class="status-select" style="padding: 5px; border-radius: 4px;">
+                                <option value="presente">🟢 Presente</option>
+                                <option value="ausente">🔴 Ausente</option>
+                            </select>
+                        </td>
+                        <td><input type="number" class="grade-input" min="0" max="10" placeholder="0 a 10" style="width: 70px; padding: 5px;"></td>
+                        <td>
+                            <select class="hw-select" style="padding: 5px; border-radius: 4px;">
+                                <option value="Sim">✅ Fez</option>
+                                <option value="Nao">❌ Não Fez</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="comments-input" placeholder="Comportamento..." style="width: 100%; padding: 5px; box-sizing: border-box;"></td>
+                    </tr>
+                `).join('');
+            });
+
+        function saveRecords() {
+            const date = document.getElementById('class-date').value;
+            const topic = document.getElementById('class-topic').value || 'Sem tema registrado';
+            if(!date) return alert("Por favor, selecione a data.");
+
+            const records = Array.from(document.querySelectorAll('#students-table tbody tr')).map(tr => ({
+                student_id: tr.dataset.studentId,
+                status: tr.querySelector('.status-select').value,
+                grade: tr.querySelector('.grade-input').value || null,
+                homework: tr.querySelector('.hw-select').value,
+                comments: tr.querySelector('.comments-input').value
+            }));
+
+            fetch('/api/save_records', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ class_id: classId, date: date, topic: topic, records: records })
+            }).then(() => {
+                alert('Registros salvos com sucesso!');
+                loadHistory(); // Atualiza o painel debaixo
+            });
+        }
+
+        function loadHistory() {
+            fetch(`/api/class/${classId}/history`)
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('history-container');
+                    if(Object.keys(data).length === 0) {
+                        container.innerHTML = "<p style='color: #64748b;'>Nenhum histórico registrado.</p>";
+                        return;
+                    }
+
+                    let html = '';
+                    for (const [date, info] of Object.entries(data)) {
+                        const dateObj = new Date(date + 'T00:00:00');
+                        const dateFormatted = dateObj.toLocaleDateString('pt-BR');
+
+                        html += `<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 1rem; padding: 1rem;">
+                            <h4 style="margin-top: 0; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">📅 ${dateFormatted} - ${info.topic}</h4>
+                            <table class="table-list" style="margin-top: 10px;">
+                                <thead><tr><th>Aluno</th><th>Status</th><th>Nota</th><th>HW</th><th>Obs</th></tr></thead>
+                                <tbody>
+                                    ${info.records.map(r => `
+                                        <tr>
+                                            <td>${r.student_name}</td>
+                                            <td><span style="color: ${r.status === 'presente' ? '#10b981' : '#ef4444'}; font-weight: bold;">${r.status.toUpperCase()}</span></td>
+                                            <td>${r.grade !== null ? r.grade : '-'}</td>
+                                            <td>${r.homework}</td>
+                                            <td><small>${r.comments || '-'}</small></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                    }
+                    container.innerHTML = html;
+                });
+        }
+        
+        loadHistory();
+    </script>
+</body>
+</html>

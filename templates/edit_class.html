@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Turma</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header style="background: #1e293b;">
+            <div>
+                <h1>✏️ Editar Turma: {{ cls.name }}</h1>
+            </div>
+            <a href="/admin" class="btn btn-primary" style="background: transparent; border: 1px solid white;">Voltar ao Painel</a>
+        </header>
+
+        <main style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <!-- Dados da Turma -->
+            <div class="card">
+                <div class="section-title">Informações da Turma</div>
+                <form action="/admin/class/{{ cls.id }}/edit" method="POST">
+                    <div class="form-group">
+                        <label>Nome da Turma</label>
+                        <input type="text" name="name" value="{{ cls.name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário</label>
+                        <input type="text" name="schedule" value="{{ cls.schedule }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Professor</label>
+                        <select name="teacher_id">
+                            <option value="">Sem professor</option>
+                            {% for t in teachers %}
+                                <option value="{{ t.id }}" {% if cls.teacher_id == t.id %}selected{% endif %}>{{ t.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </form>
+
+                <hr style="margin: 2rem 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+                <div class="section-title">Adicionar Novos Alunos</div>
+                <form action="/admin/class/{{ cls.id }}/add_students" method="POST">
+                    <div class="form-group">
+                        <label>Lista de Nomes (Um por linha)</label>
+                        <textarea name="new_students" rows="4" placeholder="Nome do novo aluno..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">Matricular</button>
+                </form>
+            </div>
+
+            <!-- Lista de Alunos Atuais -->
+            <div class="card">
+                <div class="section-title">Alunos Matriculados ({{ students|length }})</div>
+                <table class="table-list">
+                    <thead>
+                        <tr>
+                            <th>Nome do Aluno</th>
+                            <th>Login do Pai</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in students %}
+                        <tr>
+                            <td>{{ s.name }}</td>
+                            <td><small style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">{{ s.parent_login }}</small></td>
+                            <td>
+                                <form action="/admin/student/{{ s.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Deseja realmente remover o aluno {{ s.name }}? O login dos pais e o histórico serão apagados.');">
+                                    <button type="submit" style="background: none; border: none; color: #ef4444; cursor: pointer; font-weight: bold;">Remover</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
+        .card { background: white; padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); }
+        .table-list { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .table-list th, .table-list td { text-align: left; padding: 0.8rem; border-bottom: 1px solid var(--border); }
+        .badge-teacher { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+        
+        .btn-action { text-decoration: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; border: 1px solid transparent; display: inline-block; margin-right: 5px; }
+        .btn-edit { color: #2563eb; border-color: #2563eb; }
+        .btn-edit:hover { background: #2563eb; color: white; }
+        .btn-del { color: #ef4444; border-color: #ef4444; }
+        .btn-del:hover { background: #ef4444; color: white; }
+
+        /* Ajuste para o VSCode parar de reclamar do CSS nas mensagens Flash */
+        .flash-msg { padding: 12px; border-radius: 8px; margin-bottom: 1rem; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .flash-warning { background-color: #ef4444; }
+        .flash-success { background-color: #22c55e; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header style="background: #1e293b;">
+            <div>
+                <h1>Painel do Administrador</h1>
+                <span class="user-info">Admin Geral</span>
+            </div>
+            <a href="/logout" class="logout">Sair</a>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <!-- Jinja usado apenas como classe, validado 100% pelo VSCode -->
+                        <div class="flash-msg {% if category == 'warning' %}flash-warning{% else %}flash-success{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="admin-grid">
+                <div class="card">
+                    <div class="section-title">Gerenciar Turmas</div>
+                    
+                    <form action="/admin/add_class" method="POST" style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <h4 style="margin-bottom: 10px; color: var(--primary);">Nova Turma</h4>
+                        
+                        <div class="form-group">
+                            <label>Nome da Turma</label>
+                            <input type="text" name="name" placeholder="Ex: KIDS 2" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Dia/Horário</label>
+                            <input type="text" name="schedule" placeholder="Ex: TER/QUI 18h" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Professor Responsável</label>
+                            <select name="teacher_id" required>
+                                <option value="">Selecione...</option>
+                                {% for t in teachers %}
+                                    <option value="{{ t.id }}">{{ t.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Adicionar Alunos (Um nome por linha)</label>
+                            <textarea name="students_list" rows="5" placeholder="João da Silva&#10;Maria Oliveira&#10;Pedro Santos" style="font-family: inherit;"></textarea>
+                            <small style="color: #64748b; display: block; margin-top: 4px;">*O sistema criará o login dos pais automaticamente.</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Criar Turma e Matricular</button>
+                    </form>
+
+                    <table class="table-list">
+                        <thead><tr><th>Turma</th><th>Prof.</th><th>Alunos</th><th>Ações</th></tr></thead>
+                        <tbody>
+                            {% for c in classes %}
+                            <tr>
+                                <td><strong>{{ c.name }}</strong><br><small>{{ c.schedule }}</small></td>
+                                <td><span class="badge-teacher">{{ c.teacher_name or 'Sem Prof.' }}</span></td>
+                                <td>{{ c.student_count }}</td>
+                                <td>
+                                    <a href="/admin/class/{{ c.id }}/edit" class="btn-action btn-edit">✏️ Editar</a>
+                                    <a href="#" class="btn-action btn-del" onclick="openLinkModal(event, '/admin/delete_class/{{ c.id }}', 'Deseja apagar a turma <b>{{ c.name }}</b>? Todos os alunos e históricos serão perdidos para sempre.')">🗑️</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Cadastrar Professores</div>
+                    
+                    <form action="/admin/add_teacher" method="POST" style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" name="name" placeholder="Ex: Teacher Ana" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Usuário de Login</label>
+                            <input type="text" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha</label>
+                            <div class="password-container">
+                                <input type="password" name="password" id="teacher-pass" required>
+                                <button type="button" class="btn-eye" onclick="togglePassword('teacher-pass', this)">
+                                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Cadastrar Professor</button>
+                    </form>
+
+                    <h4 style="margin-top: 2rem;">Professores Ativos</h4>
+                    <table class="table-list">
+                        <tbody>
+                        {% for t in teachers %}
+                            <tr>
+                                <td>👨‍🏫 {{ t.full_name }} <small>({{ t.username }})</small></td>
+                                <td style="text-align: right;">
+                                    <a href="#" class="btn-action btn-del" onclick="openLinkModal(event, '/admin/delete_teacher/{{ t.id }}', 'Excluir o professor <b>{{ t.full_name }}</b>? As turmas dele ficarão sem professor responsável.')">Excluir</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="customModal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-icon">⚠️</span>
+            <h3 class="modal-title">Atenção!</h3>
+            <p id="modalMessage" class="modal-text">Mensagem aqui...</p>
+            <div class="modal-actions">
+                <button class="btn-modal btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button id="modalConfirmBtn" class="btn-modal btn-confirm-danger">Sim, Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById('customModal');
+        const modalMsg = document.getElementById('modalMessage');
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+        let linkToFollow = null;
+
+        function openLinkModal(e, link, msg) {
+            e.preventDefault();
+            linkToFollow = link;
+            modalMsg.innerHTML = msg;
+            modal.classList.add('active');
+        }
+
+        confirmBtn.addEventListener('click', () => { if (linkToFollow) window.location.href = linkToFollow; });
+        function closeModal() { modal.classList.remove('active'); linkToFollow = null; }
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        const iconShow = `<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        const iconHide = `<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === "password") {
+                input.type = "text";
+                btn.innerHTML = iconHide;
+            } else {
+                input.type = "password";
+                btn.innerHTML = iconShow;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+*.db
+*.sqlite3
+school_system_final.db
+__pycache__/
